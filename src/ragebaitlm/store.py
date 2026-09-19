@@ -334,8 +334,8 @@ class Store:
         return stats
 
     # -- queries ---------------------------------------------------------
-    def scored_turns(self) -> list[sqlite3.Row]:
-        """Human turns joined with stats + attribution."""
+    def scored_messages(self) -> list[sqlite3.Row]:
+        """Human messages joined with stats + attribution."""
         return list(
             self.conn.execute(
                 """SELECT e.session_id, e.harness, e.seq, e.ts, e.model AS event_model,

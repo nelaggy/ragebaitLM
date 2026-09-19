@@ -99,7 +99,7 @@ def sync(
             for key in total:
                 total[key] += result.get(key, 0)
             console.print(
-                f"  {result['sessions']} sessions · {result['human']} user turns · "
+                f"  {result['sessions']} sessions · {result['human']} user messages · "
                 f"{result['messages']} messages"
             )
     finally:
@@ -107,7 +107,7 @@ def sync(
 
     console.print(
         f"[green]done[/green] {total['sessions']} sessions, "
-        f"{total['human']} user turns → {db}"
+        f"{total['human']} user messages → {db}"
     )
 
 
@@ -129,14 +129,14 @@ def analyze(
         return
 
     overall = result["overall"]
-    if not overall.get("n_turns"):
-        console.print("[yellow]No scored turns. Run `ragebaitlm sync` first.[/yellow]")
+    if not overall.get("n_messages"):
+        console.print("[yellow]No scored messages. Run `ragebaitlm sync` first.[/yellow]")
         return
 
     mean_mood = overall["mean_mood"]
     color = "red" if mean_mood < 0 else "green"
     console.print(
-        f"[bold]{overall['n_turns']}[/bold] user turns across "
+        f"[bold]{overall['n_messages']}[/bold] user messages across "
         f"[bold]{overall['n_sessions']}[/bold] sessions · "
         f"mean mood [{color}]{mean_mood * 100:+.1f}[/{color}] · "
         f"[red]rage {overall['pct_rage'] * 100:.1f}%[/red] · "

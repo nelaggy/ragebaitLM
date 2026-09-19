@@ -1,8 +1,8 @@
-"""Aggregate scored turns into mood / blame statistics.
+"""Aggregate scored messages into mood / blame statistics.
 
 Mood is signed: ``+1`` is joy, ``-1`` is rage. Aggregates therefore use a
 double-sided axis and report the share of *rage* (strongly negative) and *joy*
-(strongly positive) turns rather than a single one-sided "high" rate.
+(strongly positive) messages rather than a single one-sided "high" rate.
 """
 
 from __future__ import annotations
@@ -18,11 +18,11 @@ RAGE_THRESHOLD = -1 / 3
 JOY_THRESHOLD = 1 / 3
 HIST_BINS_PER_SECTION = 7
 MOOD_RANGE = (-1.0, 1.0)
-MIN_GROUP_TURNS = 6
+MIN_GROUP_MESSAGES = 6
 
 
-def load_turns(store: Store) -> pd.DataFrame:
-    rows = [dict(r) for r in store.scored_turns()]
+def load_messages(store: Store) -> pd.DataFrame:
+    rows = [dict(r) for r in store.scored_messages()]
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
@@ -116,7 +116,7 @@ def _session_series(df: pd.DataFrame, markers: dict[str, list[dict]]) -> list[di
                 "title": head["title"] or session_id,
                 "harness": head["harness"],
                 "project_path": head["project_path"],
-                "n_turns": len(group),
+                "n_messages": len(group),
                 "mean_mood": float(group["mood_score"].mean()),
                 "points": points,
                 "markers": markers.get(session_id, []),
@@ -127,12 +127,12 @@ def _session_series(df: pd.DataFrame, markers: dict[str, list[dict]]) -> list[di
 
 
 def analyze(store: Store, max_sessions: int = 40) -> dict:
-    df = load_turns(store)
+    df = load_messages(store)
     markers = store.model_markers()
     sessions_total = store.session_counts()
 
     base_overall = {
-        "n_turns": 0,
+        "n_messages": 0,
         "n_sessions": 0,
         "n_subagent_sessions": sessions_total["subagents"],
         "n_stored_sessions": sessions_total["sessions"],
@@ -150,8 +150,8 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
             "sessions": [],
         }
 
-    by_model = [r for r in _group_stats(df, "model") if r["n"] >= MIN_GROUP_TURNS]
-    by_harness = [r for r in _group_stats(df, "harness") if r["n"] >= MIN_GROUP_TURNS]
+    by_model = [r for r in _group_stats(df, "model") if r["n"] >= MIN_GROUP_MESSAGES]
+    by_harness = [r for r in _group_stats(df, "harness") if r["n"] >= MIN_GROUP_MESSAGES]
     by_provider = _group_stats(df, "provider")
 
     top_sessions = [
@@ -159,7 +159,7 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
             "session_id": sid,
             "title": group.iloc[0]["title"] or sid,
             "harness": group.iloc[0]["harness"],
-            "n_turns": int(len(group)),
+            "n_messages": int(len(group)),
             "mean_mood": float(group["mood_score"].mean()),
             "min_mood": float(group["mood_score"].min()),
         }
@@ -168,7 +168,7 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
     top_sessions.sort(key=lambda r: r["mean_mood"])
 
     overall = {
-        "n_turns": int(len(df)),
+        "n_messages": int(len(df)),
         "n_sessions": int(df["session_id"].nunique()),
         "n_subagent_sessions": sessions_total["subagents"],
         "n_stored_sessions": sessions_total["sessions"],

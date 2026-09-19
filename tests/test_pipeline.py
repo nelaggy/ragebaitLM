@@ -16,11 +16,11 @@ def test_pipeline_codex(tmp_path: Path, fixtures_dir: Path):
     assert counts["human"] == 2
     assert counts["sessions"] == 1
 
-    turns = analyze_mod.load_turns(store)
-    assert len(turns) == 2
-    assert turns.iloc[0]["model"] == "gpt-6-astra"
-    assert turns["mood_score"].min() < -0.2
-    assert turns["mood_score"].max() >= turns["mood_score"].min()
+    messages = analyze_mod.load_messages(store)
+    assert len(messages) == 2
+    assert messages.iloc[0]["model"] == "gpt-6-astra"
+    assert messages["mood_score"].min() < -0.2
+    assert messages["mood_score"].max() >= messages["mood_score"].min()
     store.close()
 
 
@@ -32,8 +32,8 @@ def test_pipeline_opencode_and_report(tmp_path: Path, opencode_db: Path):
     assert counts["human"] == 3
 
     result = analyze_mod.analyze(store)
-    assert result["overall"]["n_turns"] == 3
-    assert result["by_model"] == []  # groups below MIN_GROUP_TURNS are dropped
+    assert result["overall"]["n_messages"] == 3
+    assert result["by_model"] == []  # groups below MIN_GROUP_MESSAGES are dropped
     assert result["by_harness"] == []
     assert "by_agent" not in result
     assert sum(result["mood_histogram"]["counts"]) == 3

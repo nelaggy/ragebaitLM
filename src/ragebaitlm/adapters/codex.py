@@ -3,7 +3,7 @@
 Reads rollout JSONL files under ``~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl``.
 
 Codex records injected context (plugins, environment blocks) as ``user``
-messages in ``response_item`` records, but only real user turns appear as
+messages in ``response_item`` records, but only real user messages appear as
 ``UserMessage`` items in ``event_msg.item_completed``. We therefore prefer the
 latter and fall back to ``response_item`` for older sessions.
 """

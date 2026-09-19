@@ -147,7 +147,8 @@ def _distribution(rows: list[dict], key: str = "key", title: str = "", limit: in
     return _fig_html(fig)
 
 
-def _hist(histogram: dict, title: str = "Mood distribution (all user turns)") -> str:
+
+def _hist(histogram: dict, title: str = "Mood distribution (all user messages)") -> str:
     centers = histogram.get("bin_centers") or []
     counts = histogram.get("counts") or []
     if not counts:
@@ -177,7 +178,7 @@ def _hist(histogram: dict, title: str = "Mood distribution (all user turns)") ->
                 name=name,
                 marker_color=_mood_colors(xs),
                 width=width * MOOD_SCALE * 0.9,
-                hovertemplate=f"{name}<br>mood=%{{x:.1f}}<br>turns=%{{y}}<extra></extra>",
+                hovertemplate=f"{name}<br>mood=%{{x:.1f}}<br>messages=%{{y}}<extra></extra>",
             )
         )
 
@@ -208,7 +209,7 @@ def _hist(histogram: dict, title: str = "Mood distribution (all user turns)") ->
         height=320,
         margin=dict(l=50, r=20, t=60, b=30),
         xaxis=dict(range=[-MOOD_SCALE, MOOD_SCALE], title=AXIS_TITLE, zeroline=False),
-        yaxis=dict(title="user turns"),
+        yaxis=dict(title="user messages", zeroline=False),
         showlegend=False,
         annotations=annotations,
         **DARK,

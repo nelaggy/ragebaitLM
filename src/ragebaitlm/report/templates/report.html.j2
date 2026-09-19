@@ -34,7 +34,7 @@
   <h1>ragebaitLM</h1>
   <div class="muted">coding agent rage-meter · generated {{ generated_at }}</div>
   <div class="cards">
-    <div class="card"><div class="label">user messages</div><div class="value">{{ overall.get('n_turns', 0) }}</div></div>
+    <div class="card"><div class="label">user messages</div><div class="value">{{ overall.get('n_messages', 0) }}</div></div>
     <div class="card"><div class="label">sessions</div><div class="value">{{ overall.get('n_sessions', 0) }}</div></div>
     <div class="card"><div class="label">average mood (/100)</div><div class="value">{{ '%+.1f'|format(overall.get('mean_mood', 0)*100) }}</div></div>
     <div class="card"><div class="label">median mood (/100)</div><div class="value">{{ '%+.1f'|format(overall.get('median_mood', 0)*100) }}</div></div>
