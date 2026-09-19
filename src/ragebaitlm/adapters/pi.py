@@ -4,8 +4,8 @@ Reads ``~/.pi/agent/sessions/--<cwd>--/<timestamp>_<uuid>.jsonl`` as documented
 in ``docs/session-format.md`` (installed with the pi-coding-agent package).
 
 Session entries form a tree via ``id``/``parentId``. We walk the active branch
-from the leaf to the root and treat messages on abandoned branches as branch
-revision signals. ``model_change`` entries are used as explicit model markers.
+from the leaf to the root and ignore messages on abandoned branches.
+``model_change`` entries are used as explicit model markers.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Iterable, Iterator
 
 from ..filters import is_human_prompt, text_from_content
-from ..model import Kind, NormalizedMessage, NormalizedSession, RevisionSignal
+from ..model import Kind, NormalizedMessage, NormalizedSession
 from .base import collect_files, iter_jsonl, parse_iso
 
 ROLE_KIND = {"user": Kind.HUMAN, "assistant": Kind.ASSISTANT}
@@ -92,16 +92,6 @@ class PiAdapter:
                 continue
 
             if etype == "branch_summary":
-                session.revisions.append(
-                    RevisionSignal(
-                        session_id=session_id,
-                        signal_type="branch",
-                        ts=ts,
-                        target_event_id=entry.get("fromId"),
-                        model_at_time=model,
-                        meta={"summary": (entry.get("summary") or "")[:200]},
-                    )
-                )
                 continue
 
             if etype != "message":
@@ -114,17 +104,6 @@ class PiAdapter:
                 continue
 
             if not on_active:
-                if role == "user":
-                    session.revisions.append(
-                        RevisionSignal(
-                            session_id=session_id,
-                            signal_type="branch",
-                            ts=ts,
-                            target_event_id=entry.get("id"),
-                            model_at_time=model,
-                            meta={"abandoned": True},
-                        )
-                    )
                 continue
 
             text = text_from_content(message.get("content"))

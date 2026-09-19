@@ -1,11 +1,11 @@
 # ragebaitLM
 
-Analyse coding-agent sessions for user mood (joy ↔ rage).
+for measuring how angry you get at your coding agents.
+
+coding agent best practice is to not anthropomorphise, but it's really hard to do that when they are trained to induce anthropomorphisation. getting pissed at your agent is a near universal experience, but i see lots of discussion saying different models feel different and i thought it would be really interesting to quantify that.
 
 `ragebaitLM` ingests session logs from **Codex**, **Claude Code**, **OpenCode**, and
-**Pi**, scores *your* messages with a sentiment model, attributes each message to
-the model that produced the output just before it, stores structured stats
-(never the full chats), and renders a self-contained HTML report.
+**Pi**, scores your messages with on sentiment, blames the model that produced the output just before it and stores statistics about it to produce a short report.
 
 ## Install
 
@@ -17,7 +17,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 pip install -e .            # lexicon engine only (no torch)
-pip install -e ".[ml]"      # hybrid / transformer engine
+pip install -e ".[ml]"      # required for hybrid / transformer engine
 pip install -e ".[ml,dev]"  # + test dependencies
 ```
 
@@ -44,26 +44,25 @@ it as a module without installing the script: `python -m ragebaitlm --help`.
 
 ### Sentiment engines
 
-| Engine        | Sentiment model                              | Mood quantification                                       |
-|---------------|----------------------------------------------|-----------------------------------------------------------|
-| `hybrid`      | `cardiffnlp/twitter-roberta-base-sentiment-latest` | transformer polarity + mood lexicon (default)       |
-| `transformer` | same                                          | transformer probabilities only                            |
-| `lexicon`     | none (VADER + custom lexicon)                 | lexicon only (no torch)                                   |
+| Engine        | Mood quantification                                       |
+|---------------|-----------------------------------------------------------|
+| `transformer` | `transformer only` |
+| `lexicon`     | `metrics only` |
+| `hybrid`      | `transformer score + some metrics` |
 
-If the ML dependencies are missing, `hybrid` falls back to the lexicon engine
+If the ML dependencies are missing, `hybrid` falls back to `lexicon`
 with a warning and `transformer` exits with an error.
 
 ## How mood is quantified
 
-Mood is a single signed score in `[-1, 1]`: **`+1` is joy, `0` is neutral, `-1`
-is rage**. It is the *difference* between positive and negative evidence, not a
-one-sided intensity.
-
-The sentiment model (`cardiffnlp/twitter-roberta-base-sentiment-latest`) returns
-probabilities over `negative`, `neutral`, `positive`.
+Mood is a single signed score in `[-100, 100]`: `+100` is pure joy, `0` is neutral, `-100`
+is unbridled rage. It's computed as the difference between positive and negative evidence, clamped to `[-1, 1]` and
+then scaled to `[-100, 100]`.
 
 **Transformer-only mood** (no lexicon):
 
+The sentiment model (`cardiffnlp/twitter-roberta-base-sentiment-latest`) returns
+probabilities over `negative`, `neutral`, `positive`.
 ```
 mood = clamp(positive - negative, -1, 1)
 ```
@@ -86,40 +85,12 @@ lexicon_mood      = positive_strength - negative_strength
 mood = clamp(0.65 * transformer_mood + 0.35 * lexicon_mood, -1, 1)
 ```
 
-Every fired signal is recorded in `message_stat.mood_signals_json`.
-
 ## Storage
 
 `data/ragebaitlm.db` (SQLite) stores session metadata, per-message
-`text_sha256`/length (not text), sentiment/mood scores, attribution, and
-revision signals. Pass `--cache-text` to also persist raw text for local
-experimentation; it is gitignored.
-
-The database schema is versioned. When it changes, `ragebaitlm sync` rebuilds the
-derived tables automatically; no migration is needed.
-
-## Subagent sessions
-
-Harnesses create child sessions for delegated/subagent work (OpenCode `task`
-sessions, Claude Code `subagents/*.jsonl`, Codex `agent_path` rollouts). These
-contain one synthetic prompt and no human turns, so they are stored for
-provenance but **excluded from turn statistics**. The report header shows how
-many were excluded.
-
-The remaining "one-turn" sessions are genuine: a single directive followed by a
-long autonomous run. On a real OpenCode corpus the median single-turn session
-lasted ~3 minutes and produced ~2.8k output tokens.
-
-## Revert / undo / edit
-
-Revision signals are captured on ingest into `revision_signal`:
-
-- OpenCode: `session.revert` points and `message.removed` events
-- Pi: branch/`branch_summary` leaves (tree `parentId` divergence)
-- Codex: `:codex-annotation` feedback markers
-- Claude Code: interruption / sidechain markers where present
-
-Dedicated visualisations for these are a follow-up; counts are shown in the report.
+`text_sha256`/length (not text), sentiment/mood scores, and attribution. Pass
+`--cache-text` to also persist raw text for local experimentation; it is
+gitignored.
 
 ## Tests
 

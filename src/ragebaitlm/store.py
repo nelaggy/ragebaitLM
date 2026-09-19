@@ -18,7 +18,7 @@ from .model import NormalizedMessage, NormalizedSession
 from .sentiment.mood import MoodResult
 from .sentiment.types import SentimentResult
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -103,18 +103,6 @@ CREATE TABLE IF NOT EXISTS turn_attribution (
     current_model_at_turn TEXT
 );
 
-CREATE TABLE IF NOT EXISTS revision_signal (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    harness TEXT NOT NULL,
-    ts INTEGER,
-    signal_type TEXT NOT NULL,
-    target_event_id TEXT,
-    model_at_time TEXT,
-    meta_json TEXT,
-    UNIQUE (harness, session_id, signal_type, ts, target_event_id)
-);
-CREATE INDEX IF NOT EXISTS revision_session_idx ON revision_signal (session_id);
 """
 
 
@@ -269,10 +257,6 @@ class Store:
                 "DELETE FROM event WHERE harness=? AND session_id=?",
                 (session.harness, session.id),
             )
-            self.conn.execute(
-                "DELETE FROM revision_signal WHERE harness=? AND session_id=?",
-                (session.harness, session.id),
-            )
 
             for row in data.rows:
                 msg = row.message
@@ -347,22 +331,6 @@ class Store:
                         ),
                     )
 
-            for rev in session.revisions:
-                self.conn.execute(
-                    """INSERT OR IGNORE INTO revision_signal
-                       (session_id, harness, ts, signal_type, target_event_id,
-                        model_at_time, meta_json)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        rev.session_id,
-                        session.harness,
-                        rev.ts,
-                        rev.signal_type,
-                        rev.target_event_id,
-                        rev.model_at_time,
-                        json.dumps(rev.meta),
-                    ),
-                )
         return stats
 
     # -- queries ---------------------------------------------------------
@@ -402,12 +370,6 @@ class Store:
             if not timeline or timeline[-1]["model"] != row["model"]:
                 timeline.append({"ts": row["ts"], "model": row["model"]})
         return markers
-
-    def revision_counts(self) -> dict[str, int]:
-        rows = self.conn.execute(
-            "SELECT signal_type, COUNT(*) c FROM revision_signal GROUP BY signal_type"
-        )
-        return {r["signal_type"]: r["c"] for r in rows}
 
     def session_counts(self) -> dict[str, int]:
         row = self.conn.execute(

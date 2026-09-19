@@ -71,7 +71,7 @@ def looks_injected(text: str) -> bool:
         return True
     if ANNOTATION_RE.search(text):
         # Codex annotations embed real user comments but the wrapper itself is
-        # synthetic; treat the whole block as a revision signal, not sentiment.
+        # synthetic; treat the whole block as injected context, not sentiment.
         return True
     return False
 

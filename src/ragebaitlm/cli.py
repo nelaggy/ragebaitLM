@@ -138,7 +138,7 @@ def analyze(
     console.print(
         f"[bold]{overall['n_turns']}[/bold] user turns across "
         f"[bold]{overall['n_sessions']}[/bold] sessions · "
-        f"mean mood [{color}]{mean_mood:+.3f}[/{color}] · "
+        f"mean mood [{color}]{mean_mood * 100:+.1f}[/{color}] · "
         f"[red]rage {overall['pct_rage'] * 100:.1f}%[/red] · "
         f"[green]joy {overall['pct_joy'] * 100:.1f}%[/green]"
     )
@@ -154,19 +154,17 @@ def analyze(
     ):
         table = Table(title=title)
         table.add_column("key")
-        table.add_column("n", justify="right")
+        table.add_column("messages", justify="right")
         table.add_column("mean mood", justify="right")
-        table.add_column("mean Δ", justify="right")
-        table.add_column("Δ ci low", justify="right")
+        table.add_column("median mood", justify="right")
         table.add_column("% rage", justify="right")
         table.add_column("% joy", justify="right")
         for row in rows[:top]:
             table.add_row(
                 row["key"],
                 str(row["n"]),
-                f"{row['mean']:+.3f}",
-                "–" if row["mean_delta"] is None else f"{row['mean_delta']:+.3f}",
-                "–" if row["delta_ci_low"] is None else f"{row['delta_ci_low']:+.3f}",
+                f"{row['mean'] * 100:+.1f}",
+                f"{row['median'] * 100:+.1f}",
                 f"{row['pct_rage'] * 100:.0f}%",
                 f"{row['pct_joy'] * 100:.0f}%",
             )
@@ -177,15 +175,14 @@ def analyze(
 def report(
     db: Path = typer.Option(DEFAULT_DB, "--db", help="SQLite database"),
     out: Path = typer.Option(Path("data/report.html"), "--out", "-o", help="Output HTML"),
-    max_sessions: int = typer.Option(12, "--max-sessions", help="Session charts to render"),
 ):
     """Build a self-contained HTML report."""
     store = Store(db)
     try:
-        result = analyze_mod.analyze(store, max_sessions=max_sessions)
+        result = analyze_mod.analyze(store)
     finally:
         store.close()
-    path = build_report(result, out, max_sessions=max_sessions)
+    path = build_report(result, out)
     console.print(f"[green]report[/green] → {path}")
 
 

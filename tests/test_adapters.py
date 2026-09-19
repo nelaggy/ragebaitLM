@@ -33,7 +33,7 @@ def test_codex(fixtures_dir: Path):
     # Second human turn follows a model switch.
     assert humans[1].model == "gpt-5.6-terra"
 
-    assert any(r.signal_type == "annotation" for r in session.revisions)
+    assert any(m.text.startswith("# Response annotations") for m in context)
 
 
 def test_claude(fixtures_dir: Path):
@@ -67,7 +67,6 @@ def test_pi(fixtures_dir: Path):
     ]
     # The abandoned branch message is not scored.
     assert all("still 500s" not in m.text for m in humans)
-    assert any(r.signal_type == "branch" for r in session.revisions)
     assert session.models[-1] == "gpt-6-astra"
 
 
@@ -83,7 +82,6 @@ def test_opencode(opencode_db: Path):
     ]
     assistants = [m for m in main.messages if m.kind == Kind.ASSISTANT]
     assert assistants[-1].model == "claude-opus-4-6"
-    assert any(r.signal_type == "message_removed" for r in main.revisions)
 
     sub = sessions["ses_sub"]
     assert sub.is_subagent is True

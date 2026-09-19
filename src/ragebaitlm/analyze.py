@@ -14,10 +14,11 @@ import pandas as pd
 
 from .store import Store
 
-RAGE_THRESHOLD = -0.5
-JOY_THRESHOLD = 0.5
-HIST_BINS = 20
+RAGE_THRESHOLD = -1 / 3
+JOY_THRESHOLD = 1 / 3
+HIST_BINS_PER_SECTION = 7
 MOOD_RANGE = (-1.0, 1.0)
+MIN_GROUP_TURNS = 6
 
 
 def load_turns(store: Store) -> pd.DataFrame:
@@ -36,8 +37,6 @@ def load_turns(store: Store) -> pd.DataFrame:
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce")
     df = df.sort_values(["session_id", "ts", "seq"]).reset_index(drop=True)
 
-    df["prev_turn_mood"] = df.groupby("session_id")["mood_score"].shift(1)
-    df["delta"] = df["mood_score"] - df["prev_turn_mood"]
     df["is_rage"] = df["mood_score"] <= RAGE_THRESHOLD
     df["is_joy"] = df["mood_score"] >= JOY_THRESHOLD
     return df
@@ -58,20 +57,20 @@ def _group_stats(df: pd.DataFrame, column: str) -> list[dict]:
     out: list[dict] = []
     for key, group in df.groupby(column, dropna=False):
         low, high = _bootstrap_ci(group["mood_score"])
-        dlow, dhigh = _bootstrap_ci(group["delta"])
+        mood = group["mood_score"]
         out.append(
             {
                 "key": str(key),
                 "n": int(len(group)),
-                "mean": float(group["mood_score"].mean()),
-                "median": float(group["mood_score"].median()),
+                "mean": float(mood.mean()),
+                "median": float(mood.median()),
+                "q1": float(mood.quantile(0.25)),
+                "q3": float(mood.quantile(0.75)),
+                "low": float(mood.min()),
+                "high": float(mood.max()),
+                "values": [round(float(v), 4) for v in mood],
                 "pct_rage": float(group["is_rage"].mean()),
                 "pct_joy": float(group["is_joy"].mean()),
-                "mean_delta": None
-                if group["delta"].dropna().empty
-                else float(group["delta"].mean()),
-                "delta_ci_low": dlow,
-                "delta_ci_high": dhigh,
                 "ci_low": low,
                 "ci_high": high,
             }
@@ -81,8 +80,15 @@ def _group_stats(df: pd.DataFrame, column: str) -> list[dict]:
 
 
 def _histogram(df: pd.DataFrame) -> dict:
+    edges = np.concatenate(
+        [
+            np.linspace(MOOD_RANGE[0], RAGE_THRESHOLD, HIST_BINS_PER_SECTION + 1),
+            np.linspace(RAGE_THRESHOLD, JOY_THRESHOLD, HIST_BINS_PER_SECTION + 1)[1:],
+            np.linspace(JOY_THRESHOLD, MOOD_RANGE[1], HIST_BINS_PER_SECTION + 1)[1:],
+        ]
+    )
     counts, edges = np.histogram(
-        df["mood_score"].to_numpy(dtype=float), bins=HIST_BINS, range=MOOD_RANGE
+        df["mood_score"].to_numpy(dtype=float), bins=edges
     )
     return {
         "bin_edges": [round(float(e), 4) for e in edges],
@@ -123,7 +129,6 @@ def _session_series(df: pd.DataFrame, markers: dict[str, list[dict]]) -> list[di
 def analyze(store: Store, max_sessions: int = 40) -> dict:
     df = load_turns(store)
     markers = store.model_markers()
-    revisions = store.revision_counts()
     sessions_total = store.session_counts()
 
     base_overall = {
@@ -131,6 +136,8 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
         "n_sessions": 0,
         "n_subagent_sessions": sessions_total["subagents"],
         "n_stored_sessions": sessions_total["sessions"],
+        "rage_threshold": RAGE_THRESHOLD,
+        "joy_threshold": JOY_THRESHOLD,
     }
     if df.empty:
         return {
@@ -141,11 +148,10 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
             "mood_histogram": {"bin_edges": [], "bin_centers": [], "counts": []},
             "top_sessions": [],
             "sessions": [],
-            "revisions": revisions,
         }
 
-    by_model = _group_stats(df, "model")
-    by_harness = _group_stats(df, "harness")
+    by_model = [r for r in _group_stats(df, "model") if r["n"] >= MIN_GROUP_TURNS]
+    by_harness = [r for r in _group_stats(df, "harness") if r["n"] >= MIN_GROUP_TURNS]
     by_provider = _group_stats(df, "provider")
 
     top_sessions = [
@@ -170,6 +176,8 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
         "median_mood": float(df["mood_score"].median()),
         "pct_rage": float(df["is_rage"].mean()),
         "pct_joy": float(df["is_joy"].mean()),
+        "rage_threshold": RAGE_THRESHOLD,
+        "joy_threshold": JOY_THRESHOLD,
     }
 
     sessions = _session_series(df, markers)
@@ -181,7 +189,6 @@ def analyze(store: Store, max_sessions: int = 40) -> dict:
         "mood_histogram": _histogram(df),
         "top_sessions": top_sessions[:max_sessions],
         "sessions": sessions[:max_sessions],
-        "revisions": revisions,
     }
 
 

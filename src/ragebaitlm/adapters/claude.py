@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Iterable, Iterator
 
 from ..filters import is_human_prompt, text_from_content
-from ..model import Kind, NormalizedMessage, NormalizedSession, RevisionSignal
+from ..model import Kind, NormalizedMessage, NormalizedSession
 from .base import collect_files, iter_jsonl, parse_iso
 
 INTERRUPT_MARKERS = (
@@ -96,15 +96,6 @@ class ClaudeAdapter:
                     continue
                 lowered = text.lower()
                 if any(marker in lowered for marker in INTERRUPT_MARKERS):
-                    session.revisions.append(
-                        RevisionSignal(
-                            session_id=session_id,
-                            signal_type="interrupt",
-                            ts=ts,
-                            target_event_id=record.get("uuid"),
-                            meta={"text": text[:200]},
-                        )
-                    )
                     continue
                 if is_subagent:
                     kind = Kind.SUBAGENT_PROMPT

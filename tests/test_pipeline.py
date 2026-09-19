@@ -21,9 +21,6 @@ def test_pipeline_codex(tmp_path: Path, fixtures_dir: Path):
     assert turns.iloc[0]["model"] == "gpt-6-astra"
     assert turns["mood_score"].min() < -0.2
     assert turns["mood_score"].max() >= turns["mood_score"].min()
-
-    revisions = store.revision_counts()
-    assert revisions.get("annotation") == 1
     store.close()
 
 
@@ -36,12 +33,12 @@ def test_pipeline_opencode_and_report(tmp_path: Path, opencode_db: Path):
 
     result = analyze_mod.analyze(store)
     assert result["overall"]["n_turns"] == 3
-    assert any(r["key"] == "claude-opus-4-6" for r in result["by_model"])
-    assert any(r["key"] == "opencode" for r in result["by_harness"])
+    assert result["by_model"] == []  # groups below MIN_GROUP_TURNS are dropped
+    assert result["by_harness"] == []
     assert "by_agent" not in result
     assert sum(result["mood_histogram"]["counts"]) == 3
 
-    out = build_report(result, tmp_path / "report.html", max_sessions=3)
+    out = build_report(result, tmp_path / "report.html")
     assert out.exists()
     assert "ragebaitLM" in out.read_text(encoding="utf-8")
     store.close()

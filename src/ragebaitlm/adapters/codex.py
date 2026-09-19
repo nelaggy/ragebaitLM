@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Iterable, Iterator
 
 from ..filters import has_annotation, is_human_prompt, text_from_content
-from ..model import Kind, NormalizedMessage, NormalizedSession, RevisionSignal
+from ..model import Kind, NormalizedMessage, NormalizedSession
 from .base import collect_files, iter_jsonl, parse_iso
 
 ITEM_KIND = {
@@ -107,15 +107,6 @@ class CodexAdapter:
                 "turn_aborted",
                 "user_interrupted",
             }:
-                session.revisions.append(
-                    RevisionSignal(
-                        session_id=session.id,
-                        signal_type="interrupt",
-                        ts=ts,
-                        model_at_time=model,
-                        meta={"codex_event": payload.get("type")},
-                    )
-                )
                 continue
 
             if rtype != "event_msg" or payload.get("type") != "item_completed":
@@ -131,15 +122,6 @@ class CodexAdapter:
 
             if item_type == "UserMessage":
                 if has_annotation(text):
-                    session.revisions.append(
-                        RevisionSignal(
-                            session_id=session.id,
-                            signal_type="annotation",
-                            ts=ts,
-                            target_event_id=item.get("id"),
-                            model_at_time=model,
-                        )
-                    )
                     kind = Kind.CONTEXT
                 elif is_human_prompt(text):
                     kind = Kind.HUMAN
@@ -183,15 +165,6 @@ class CodexAdapter:
 
             if role == "user":
                 if has_annotation(text):
-                    session.revisions.append(
-                        RevisionSignal(
-                            session_id=session.id,
-                            signal_type="annotation",
-                            ts=ts,
-                            target_event_id=payload.get("id"),
-                            model_at_time=model,
-                        )
-                    )
                     kind = Kind.CONTEXT
                 elif is_human_prompt(text):
                     kind = Kind.HUMAN

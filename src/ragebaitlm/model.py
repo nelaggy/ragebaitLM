@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 class Kind(str, Enum):
@@ -18,7 +17,6 @@ class Kind(str, Enum):
     CONTEXT = "context_injected"
     SUBAGENT_PROMPT = "subagent_prompt"
     MODEL_CHANGE = "model_change"
-    REVISION = "revision"
 
 
 @dataclass
@@ -45,18 +43,6 @@ class NormalizedMessage:
 
 
 @dataclass
-class RevisionSignal:
-    """A revert / undo / edit / branch signal observed in a session."""
-
-    session_id: str
-    signal_type: str  # revert | message_removed | branch | annotation | interrupt
-    ts: int | None = None
-    target_event_id: str | None = None
-    model_at_time: str | None = None
-    meta: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
 class NormalizedSession:
     id: str
     harness: str
@@ -69,7 +55,6 @@ class NormalizedSession:
     raw_path: str | None = None
     models: list[str] = field(default_factory=list)
     messages: list[NormalizedMessage] = field(default_factory=list)
-    revisions: list[RevisionSignal] = field(default_factory=list)
 
     def add(self, message: NormalizedMessage) -> None:
         self.messages.append(message)
