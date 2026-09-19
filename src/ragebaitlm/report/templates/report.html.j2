@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ragebaitLM — coding-agent mood report</title>
+  <script type="text/javascript">{{ plotlyjs | safe }}</script>
+  <style>
+    :root { --bg:#0f1116; --panel:#171a21; --ink:#e8eaed; --muted:#9aa0a6; --accent:#d62728; --joy:#2ca02c; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink);
+           font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+           line-height:1.5; }
+    header { padding:32px 40px 8px; }
+    h1 { margin:0 0 4px; font-size:26px; }
+    h2 { margin:36px 0 12px; font-size:19px; border-bottom:1px solid #262a33; padding-bottom:6px; }
+    h3 { margin:18px 0 8px; font-size:15px; color:var(--muted); font-weight:600; }
+    .muted { color:var(--muted); }
+    main { padding:0 40px 80px; max-width:1200px; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-top:20px; }
+    .card { background:var(--panel); border:1px solid #262a33; border-radius:10px; padding:16px 18px; }
+    .card .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+    .card .value { font-size:26px; font-weight:700; margin-top:6px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+    @media (max-width:900px){ .grid2{grid-template-columns:1fr;} main,header{padding-left:18px;padding-right:18px;} }
+    .panel { background:var(--panel); border:1px solid #262a33; border-radius:10px; padding:10px 12px; margin:10px 0; }
+    table { border-collapse:collapse; width:100%; font-size:13px; }
+    th,td { text-align:left; padding:7px 10px; border-bottom:1px solid #262a33; }
+    th { color:var(--muted); font-weight:600; }
+    .session { background:var(--panel); border:1px solid #262a33; border-radius:10px; padding:6px 10px; margin:12px 0; }
+    .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .chip { background:#232733; border:1px solid #313646; color:var(--ink);
+            border-radius:999px; padding:3px 10px; font-size:12px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>ragebaitLM</h1>
+  <div class="muted">Coding-agent session mood · joy ↔ rage · generated {{ generated_at }}</div>
+  <div class="muted">
+    {{ overall.get('n_stored_sessions', 0) }} sessions stored ·
+    {{ overall.get('n_subagent_sessions', 0) }} subagent sessions excluded from turn stats
+  </div>
+  <div class="cards">
+    <div class="card"><div class="label">user turns</div><div class="value">{{ overall.get('n_turns', 0) }}</div></div>
+    <div class="card"><div class="label">sessions</div><div class="value">{{ overall.get('n_sessions', 0) }}</div></div>
+    <div class="card"><div class="label">avg mood</div><div class="value">{{ '%+.3f'|format(overall.get('mean_mood', 0)) }}</div></div>
+    <div class="card"><div class="label">median mood</div><div class="value">{{ '%+.3f'|format(overall.get('median_mood', 0)) }}</div></div>
+    <div class="card"><div class="label">% rage (≤ -0.5)</div><div class="value" style="color:var(--accent)">{{ '%.1f'|format(overall.get('pct_rage', 0)*100) }}%</div></div>
+    <div class="card"><div class="label">% joy (≥ 0.5)</div><div class="value" style="color:var(--joy)">{{ '%.1f'|format(overall.get('pct_joy', 0)*100) }}%</div></div>
+  </div>
+</header>
+
+<main>
+  <h2>Summary</h2>
+  <div class="grid2">
+    <div class="panel">{{ charts.by_model | safe }}</div>
+    <div class="panel">{{ charts.by_harness | safe }}</div>
+  </div>
+  <div class="panel">{{ charts.hist | safe }}</div>
+
+  <h2>Blame tables</h2>
+  <h3>By preceding model</h3>
+  {{ by_model_table | safe }}
+  <h3>By harness</h3>
+  {{ by_harness_table | safe }}
+
+  <h2>Most rage-prone sessions</h2>
+  {{ top_sessions_table | safe }}
+
+  <h2>Session event charts</h2>
+  <p class="muted">Mood per user turn over time (−1 rage ↔ +1 joy). Dotted vertical lines mark model changes.</p>
+  {% for chart in session_charts %}
+    <div class="session">{{ chart.html | safe }}</div>
+  {% endfor %}
+  {% if not session_charts %}<p class="muted">No scored sessions yet.</p>{% endif %}
+
+  <h2>Revision signals</h2>
+  {% if revisions %}
+    <div class="chips">
+      {% for signal, count in revisions.items() %}
+        <span class="chip">{{ signal }}: {{ count }}</span>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">None captured.</p>
+  {% endif %}
+</main>
+</body>
+</html>

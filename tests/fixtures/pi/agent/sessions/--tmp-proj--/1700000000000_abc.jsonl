@@ -1,0 +1,9 @@
+{"type":"session","version":3,"id":"sess-pi-1","timestamp":"2026-09-01T10:00:00.000Z","cwd":"/tmp/proj"}
+{"type":"message","id":"p1","parentId":null,"timestamp":"2026-09-01T10:00:01.000Z","message":{"role":"user","content":"add a healthcheck endpoint"}}
+{"type":"message","id":"p2","parentId":"p1","timestamp":"2026-09-01T10:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Added it."}],"provider":"anthropic","model":"claude-sonnet-4-5","stopReason":"stop"}}
+{"type":"model_change","id":"p3","parentId":"p2","timestamp":"2026-09-01T10:01:00.000Z","provider":"openai","modelId":"gpt-6-astra"}
+{"type":"message","id":"p4","parentId":"p3","timestamp":"2026-09-01T10:01:01.000Z","message":{"role":"user","content":"no, it still 500s. revert that"}}
+{"type":"message","id":"p5","parentId":"p4","timestamp":"2026-09-01T10:01:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me check."}],"provider":"openai","model":"gpt-6-astra","stopReason":"stop"}}
+{"type":"branch_summary","id":"p6","parentId":"p2","timestamp":"2026-09-01T10:05:00.000Z","fromId":"p2","summary":"Abandoned first approach"}
+{"type":"message","id":"p7","parentId":"p6","timestamp":"2026-09-01T10:05:01.000Z","message":{"role":"user","content":"let's try a different approach entirely"}}
+{"type":"message","id":"p8","parentId":"p7","timestamp":"2026-09-01T10:05:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Sure, new plan."}],"provider":"openai","model":"gpt-6-astra","stopReason":"stop"}}
