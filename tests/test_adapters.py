@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from ragebaitlm.adapters.antigravity import AntigravityAdapter
 from ragebaitlm.adapters.claude import ClaudeAdapter
 from ragebaitlm.adapters.codex import CodexAdapter
 from ragebaitlm.adapters.cursor import CursorAdapter
@@ -148,6 +149,33 @@ def test_vscode(vscode_root: Path):
     # unresolved auto-selection stays a distinct label.
     assert [m.model for m in assistants] == ["claude-sonnet-4", "copilot-auto"]
     assert all(m.provider == "copilot" for m in assistants)
+
+
+def test_antigravity(antigravity_root: Path):
+    adapter = AntigravityAdapter(home=antigravity_root)
+    sessions = _by_id(adapter.iter_sessions())
+    assert set(sessions) == {"conv-1"}
+
+    session = sessions["conv-1"]
+    assert session.project_path == "/tmp/proj"
+    assert session.title == "please fix the parser"
+    assert session.started_at == 1789814123000
+    humans = [m for m in session.messages if m.kind == Kind.HUMAN]
+    assert [m.text for m in humans] == [
+        "please fix the parser",
+        "no still broken, why???",
+    ]
+    assistants = [m for m in session.messages if m.kind == Kind.ASSISTANT]
+    # `gen_metadata` maps the response id to a display name; an enum with no
+    # recorded name falls back to `model-<n>`.
+    assert [m.model for m in assistants] == ["Gemini 3.5 Flash", "model-9"]
+    assert all(m.provider == "antigravity" for m in assistants)
+
+
+def test_antigravity_skips_foreign_db(antigravity_root: Path):
+    adapter = AntigravityAdapter(home=antigravity_root)
+    ids = {s.id for s in adapter.iter_sessions()}
+    assert "not-antigravity" not in ids
 
 
 def test_vscode_normalize_model():

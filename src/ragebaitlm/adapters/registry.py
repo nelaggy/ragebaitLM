@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .antigravity import AntigravityAdapter
 from .base import Adapter
 from .claude import ClaudeAdapter
 from .codex import CodexAdapter
@@ -17,6 +18,7 @@ ADAPTERS: dict[str, type] = {
     "pi": PiAdapter,
     "cursor": CursorAdapter,
     "vscode": VSCodeAdapter,
+    "antigravity": AntigravityAdapter,
 }
 
 

@@ -186,6 +186,149 @@ def cursor_root(tmp_path: Path) -> Path:
     return root
 
 
+def _pb_varint(value: int) -> bytes:
+    out = bytearray()
+    while value >= 0x80:
+        out.append((value & 0x7F) | 0x80)
+        value >>= 7
+    out.append(value)
+    return bytes(out)
+
+
+def _pb_key(field: int, wire: int) -> bytes:
+    return _pb_varint((field << 3) | wire)
+
+
+def _pb_uint(field: int, value: int) -> bytes:
+    return _pb_key(field, 0) + _pb_varint(value)
+
+
+def _pb_bytes(field: int, data: bytes) -> bytes:
+    return _pb_key(field, 2) + _pb_varint(len(data)) + data
+
+
+def _pb_str(field: int, text: str) -> bytes:
+    return _pb_bytes(field, text.encode("utf-8"))
+
+
+def _pb_timestamp(field: int, seconds: int) -> bytes:
+    inner = _pb_uint(1, seconds) + _pb_uint(2, 0)
+    return _pb_bytes(field, inner)
+
+
+def _ag_metadata(
+    seconds: int, model_id: int | None = None, response_id: str | None = None
+) -> bytes:
+    data = _pb_timestamp(1, seconds) + _pb_uint(3, 4)
+    if response_id:
+        data += _pb_bytes(9, _pb_str(11, response_id))
+    if model_id is not None:
+        data += _pb_uint(11, model_id)
+    return data
+
+
+def _ag_step(idx: int, step_type: int, metadata: bytes, payload_field: int,
+             payload_body: bytes) -> tuple:
+    payload = (
+        _pb_uint(1, step_type)
+        + _pb_uint(4, 3)
+        + _pb_bytes(5, metadata)
+        + _pb_bytes(payload_field, payload_body)
+    )
+    return (idx, step_type, 3, metadata, payload)
+
+
+@pytest.fixture
+def antigravity_root(tmp_path: Path) -> Path:
+    root = tmp_path / "antigravity"
+    conversations = root / "conversations"
+    conversations.mkdir(parents=True)
+
+    db = conversations / "conv-1.db"
+    conn = sqlite3.connect(db)
+    conn.executescript(
+        """
+        CREATE TABLE trajectory_meta (
+            trajectory_id TEXT, cascade_id TEXT, trajectory_type INTEGER,
+            source INTEGER, PRIMARY KEY (trajectory_id)
+        );
+        CREATE TABLE steps (
+            idx INTEGER PRIMARY KEY, step_type INTEGER NOT NULL DEFAULT 0,
+            status INTEGER NOT NULL DEFAULT 0, metadata BLOB, step_payload BLOB
+        );
+        CREATE TABLE gen_metadata (
+            idx INTEGER PRIMARY KEY, data BLOB, size INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE trajectory_metadata_blob (
+            id TEXT DEFAULT "main", data BLOB, PRIMARY KEY (id)
+        );
+        """
+    )
+    conn.execute(
+        "INSERT INTO trajectory_meta VALUES (?,?,?,?)",
+        ("traj-1", "conv-1", 0, 28),
+    )
+
+    workspace = _pb_str(1, "file:///tmp/proj") + _pb_str(4, "main")
+    main = (
+        _pb_bytes(1, workspace)
+        + _pb_timestamp(2, 1789814123)
+        + _pb_str(6, "conv-1")
+    )
+    conn.execute(
+        "INSERT INTO trajectory_metadata_blob VALUES (?,?)", ("main", main)
+    )
+
+    # gen_metadata: model-4 renders as "Gemini 3.5 Flash" via response id.
+    usage = _pb_str(11, "resp-1")
+    chat_model = (
+        _pb_bytes(4, usage)
+        + _pb_str(19, "gemini-3-flash-a")
+        + _pb_str(21, "Gemini 3.5 Flash")
+    )
+    conn.execute(
+        "INSERT INTO gen_metadata VALUES (?,?,?)",
+        (0, _pb_bytes(1, chat_model), 0),
+    )
+    usage2 = _pb_str(11, "resp-2")
+    chat_model2 = _pb_bytes(4, usage2) + _pb_str(21, "Gemini 3 Pro")
+    conn.execute(
+        "INSERT INTO gen_metadata VALUES (?,?,?)",
+        (1, _pb_bytes(1, chat_model2), 0),
+    )
+
+    user_body = _pb_str(2, "please fix the parser") + _pb_bytes(
+        3, _pb_str(1, "please fix the parser")
+    )
+    assistant_body = _pb_str(1, "Done.") + _pb_str(3, "thinking")
+    steps = [
+        _ag_step(0, 14, _ag_metadata(1789814123), 19, user_body),
+        _ag_step(1, 15, _ag_metadata(1789814124, 4, "resp-1"), 20, assistant_body),
+        _ag_step(
+            2, 14, _ag_metadata(1789814133),
+            19, _pb_str(2, "no still broken, why???"),
+        ),
+        _ag_step(
+            3, 15, _ag_metadata(1789814134, 9), 20, _pb_str(1, "Sorry."),
+        ),
+    ]
+    conn.executemany(
+        "INSERT INTO steps (idx, step_type, status, metadata, step_payload) "
+        "VALUES (?,?,?,?,?)",
+        steps,
+    )
+    conn.commit()
+    conn.close()
+
+    # A foreign SQLite database must be ignored rather than crash the sync.
+    other = conversations / "not-antigravity.db"
+    conn = sqlite3.connect(other)
+    conn.execute("CREATE TABLE unrelated (idx INTEGER PRIMARY KEY)")
+    conn.commit()
+    conn.close()
+    return root
+
+
 @pytest.fixture
 def vscode_root(tmp_path: Path) -> Path:
     root = tmp_path / "Code" / "User"

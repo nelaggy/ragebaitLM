@@ -5,10 +5,11 @@ for measuring how angry you get at your coding agents.
 coding agent best practice is to not anthropomorphise, but it's really hard to do that when they are trained to induce anthropomorphisation. getting pissed at your agent is a near universal experience, but i see lots of discussion saying different models feel different and i thought it would be really interesting to quantify that.
 
 `ragebaitLM` ingests session logs from **Codex**, **Claude Code**, **OpenCode**,
-**Pi**, **Cursor** (IDE composers and `cursor-agent` CLI transcripts), and
-**VS Code Copilot Chat**, scores your messages with on sentiment, blames the
-model that produced the output just before it and stores statistics about it to
-produce a short report.
+**Pi**, **Cursor** (IDE composers and `cursor-agent` CLI transcripts),
+**VS Code Copilot Chat**, and **Google Antigravity** (the `agy` CLI and newer
+IDE SQLite conversation stores), scores your messages with on sentiment, blames
+the model that produced the output just before it and stores statistics about it
+to produce a short report.
 
 ## Install
 
