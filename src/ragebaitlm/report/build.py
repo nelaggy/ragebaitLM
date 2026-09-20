@@ -206,9 +206,14 @@ def _hist(histogram: dict, title: str = "Mood distribution (all user messages)")
 
     fig.update_layout(
         title=title,
-        height=320,
-        margin=dict(l=50, r=20, t=60, b=30),
-        xaxis=dict(range=[-MOOD_SCALE, MOOD_SCALE], title=AXIS_TITLE, zeroline=False),
+        height=348,
+        margin=dict(l=52, r=20, t=84, b=40),
+        xaxis=dict(
+            range=[-MOOD_SCALE, MOOD_SCALE],
+            title=AXIS_TITLE,
+            zeroline=False,
+            ticklabelstandoff=9,
+        ),
         yaxis=dict(title="user messages", zeroline=False),
         showlegend=False,
         annotations=annotations,

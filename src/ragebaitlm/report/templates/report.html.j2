@@ -21,10 +21,14 @@
     .card { background:var(--panel); border:1px solid #262a33; border-radius:10px; padding:16px 18px; }
     .card .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
     .card .value { font-size:26px; font-weight:700; margin-top:6px; }
-    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
     @media (max-width:900px){ .grid2{grid-template-columns:1fr;} main,header{padding-left:18px;padding-right:18px;} }
     .panel { background:var(--panel); border:1px solid #262a33; border-radius:10px; padding:10px 12px; margin:10px 0; }
-    .chart-scroll { max-height:600px; overflow-y:auto; }
+    .chart-body { overflow-y:auto; scrollbar-gutter:stable; }
+    .resize-handle { height:14px; margin-top:4px; cursor:ns-resize; border-radius:6px;
+                     display:flex; align-items:center; justify-content:center; touch-action:none; }
+    .resize-handle::before { content:""; width:46px; height:4px; border-radius:2px; background:#3a404d; }
+    .resize-handle:hover::before, .resize-handle.dragging::before { background:var(--muted); }
     table { border-collapse:collapse; width:100%; font-size:13px; }
     th,td { text-align:left; padding:7px 10px; border-bottom:1px solid #262a33; }
     th { color:var(--muted); font-weight:600; }
@@ -47,8 +51,14 @@
 <main>
   <h2>Summary</h2>
   <div class="grid2">
-    <div class="panel chart-scroll">{{ charts.by_model | safe }}</div>
-    <div class="panel">{{ charts.by_harness | safe }}</div>
+    <div class="panel">
+      <div class="chart-body">{{ charts.by_model | safe }}</div>
+      <div class="resize-handle" role="separator" aria-orientation="horizontal" title="Drag to resize"></div>
+    </div>
+    <div class="panel">
+      <div class="chart-body">{{ charts.by_harness | safe }}</div>
+      <div class="resize-handle" role="separator" aria-orientation="horizontal" title="Drag to resize"></div>
+    </div>
   </div>
   <div class="panel">{{ charts.hist | safe }}</div>
 
@@ -58,5 +68,49 @@
   <h3>By harness</h3>
   {{ by_harness_table | safe }}
 </main>
+<script>
+(function () {
+  function init(handle) {
+    var body = handle.closest('.panel').querySelector('.chart-body');
+    var gd = body && body.querySelector('.plotly-graph-div');
+    if (!gd) return;
+    var wrap = gd.parentElement;
+    var startY = 0, startH = 0;
+
+    var h0 = Math.round(gd.getBoundingClientRect().height) || 240;
+    if (wrap) wrap.style.height = 'auto';
+    gd.style.height = h0 + 'px';
+    body.style.height = h0 + 'px';
+
+    function onMove(e) {
+      var h = startH + (e.clientY - startY);
+      h = Math.max(160, Math.min(4000, h));
+      body.style.height = h + 'px';
+      var chartH = Math.max(h, h0);
+      gd.style.height = chartH + 'px';
+      Plotly.relayout(gd, { height: chartH });
+      e.preventDefault();
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      handle.classList.remove('dragging');
+      document.body.style.userSelect = '';
+    }
+    handle.addEventListener('pointerdown', function (e) {
+      startY = e.clientY;
+      startH = body.getBoundingClientRect().height;
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+      handle.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+  }
+  document.querySelectorAll('.resize-handle').forEach(init);
+})();
+</script>
 </body>
 </html>
