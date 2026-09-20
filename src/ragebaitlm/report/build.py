@@ -61,9 +61,9 @@ def _fig_html(fig: go.Figure) -> str:
     )
 
 
-def _distribution(rows: list[dict], key: str = "key", title: str = "", limit: int = 15) -> str:
+def _distribution(rows: list[dict], key: str = "key", title: str = "") -> str:
     rows = [r for r in rows if r.get("values")]
-    rows = sorted(rows, key=lambda r: r.get("mean", 0) or 0)[:limit]
+    rows = sorted(rows, key=lambda r: r.get("mean", 0) or 0)
     if not rows:
         return "<p class='muted'>No data.</p>"
     means = [r["mean"] for r in rows]
@@ -217,12 +217,12 @@ def _hist(histogram: dict, title: str = "Mood distribution (all user messages)")
     return _fig_html(fig)
 
 
-def _table(rows: list[dict], columns: list[tuple[str, str]], limit: int = 20) -> str:
+def _table(rows: list[dict], columns: list[tuple[str, str]]) -> str:
     if not rows:
         return "<p class='muted'>No data.</p>"
     head = "".join(f"<th>{label}</th>" for _, label in columns)
     body = []
-    for row in rows[:limit]:
+    for row in rows:
         cells = []
         for key, _ in columns:
             value = row.get(key)

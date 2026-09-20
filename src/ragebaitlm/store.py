@@ -347,6 +347,7 @@ class Store:
                           ms.mood_signals_json,
                           ta.prev_model, ta.prev_provider,
                           ta.prev_stop_reason, ta.prev_latency_ms,
+                          ta.prev_assistant_seq,
                           ta.current_model_at_turn
                    FROM event e
                    LEFT JOIN harness_session ss ON ss.session_id = e.session_id

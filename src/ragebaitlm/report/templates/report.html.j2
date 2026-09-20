@@ -24,6 +24,7 @@
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
     @media (max-width:900px){ .grid2{grid-template-columns:1fr;} main,header{padding-left:18px;padding-right:18px;} }
     .panel { background:var(--panel); border:1px solid #262a33; border-radius:10px; padding:10px 12px; margin:10px 0; }
+    .chart-scroll { max-height:600px; overflow-y:auto; }
     table { border-collapse:collapse; width:100%; font-size:13px; }
     th,td { text-align:left; padding:7px 10px; border-bottom:1px solid #262a33; }
     th { color:var(--muted); font-weight:600; }
@@ -46,7 +47,7 @@
 <main>
   <h2>Summary</h2>
   <div class="grid2">
-    <div class="panel">{{ charts.by_model | safe }}</div>
+    <div class="panel chart-scroll">{{ charts.by_model | safe }}</div>
     <div class="panel">{{ charts.by_harness | safe }}</div>
   </div>
   <div class="panel">{{ charts.hist | safe }}</div>

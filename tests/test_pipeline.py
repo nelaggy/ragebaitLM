@@ -16,11 +16,13 @@ def test_pipeline_codex(tmp_path: Path, fixtures_dir: Path):
     assert counts["human"] == 2
     assert counts["sessions"] == 1
 
+    # The opening prompt is stored but excluded from the report: nothing
+    # precedes it, so there is no model to blame.
+    assert len(store.scored_messages()) == 2
     messages = analyze_mod.load_messages(store)
-    assert len(messages) == 2
+    assert len(messages) == 1
     assert messages.iloc[0]["model"] == "gpt-6-astra"
     assert messages["mood_score"].min() < -0.2
-    assert messages["mood_score"].max() >= messages["mood_score"].min()
     store.close()
 
 
@@ -32,11 +34,12 @@ def test_pipeline_opencode_and_report(tmp_path: Path, opencode_db: Path):
     assert counts["human"] == 3
 
     result = analyze_mod.analyze(store)
-    assert result["overall"]["n_messages"] == 3
+    # The first prompt has no preceding assistant and is excluded.
+    assert result["overall"]["n_messages"] == 2
     assert result["by_model"] == []  # groups below MIN_GROUP_MESSAGES are dropped
     assert result["by_harness"] == []
     assert "by_agent" not in result
-    assert sum(result["mood_histogram"]["counts"]) == 3
+    assert sum(result["mood_histogram"]["counts"]) == 2
 
     out = build_report(result, tmp_path / "report.html")
     assert out.exists()

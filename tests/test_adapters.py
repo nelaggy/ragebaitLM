@@ -2,8 +2,10 @@ from pathlib import Path
 
 from ragebaitlm.adapters.claude import ClaudeAdapter
 from ragebaitlm.adapters.codex import CodexAdapter
+from ragebaitlm.adapters.cursor import CursorAdapter
 from ragebaitlm.adapters.opencode import OpenCodeAdapter
 from ragebaitlm.adapters.pi import PiAdapter
+from ragebaitlm.adapters.vscode import VSCodeAdapter, _normalize_model
 from ragebaitlm.model import Kind
 
 
@@ -86,3 +88,69 @@ def test_opencode(opencode_db: Path):
     sub = sessions["ses_sub"]
     assert sub.is_subagent is True
     assert any(m.kind == Kind.SUBAGENT_PROMPT for m in sub.messages)
+
+
+def test_cursor(cursor_root: Path):
+    adapter = CursorAdapter(home=cursor_root)
+    sessions = _by_id(adapter.iter_sessions())
+    assert set(sessions) == {"comp-1", "cli:cli-1"}
+
+    ide = sessions["comp-1"]
+    assert ide.project_path == "/tmp/proj"
+    assert ide.title == "please fix the parser"
+    humans = [m for m in ide.messages if m.kind == Kind.HUMAN]
+    assert [m.text for m in humans] == [
+        "please fix the parser",
+        "no still broken, why???",
+    ]
+    assistants = [m for m in ide.messages if m.kind == Kind.ASSISTANT]
+    assert assistants[0].model == "claude-4.5-sonnet"
+    assert assistants[-1].model == "gpt-5"
+
+    cli = sessions["cli:cli-1"]
+    assert cli.project_path == "/tmp/proj"
+    assert [m.text for m in cli.messages if m.kind == Kind.HUMAN] == [
+        "please fix the parser",
+        "no still broken, why???",
+    ]
+    assert [m.model for m in cli.messages if m.kind == Kind.ASSISTANT] == [
+        "claude-4.5-sonnet",
+        "gpt-5",
+    ]
+
+
+def test_vscode(vscode_root: Path):
+    adapter = VSCodeAdapter(home=vscode_root)
+    sessions = _by_id(adapter.iter_sessions())
+    assert set(sessions) == {"sess-vscode-1", "sess-vscode-2"}
+
+    session = sessions["sess-vscode-1"]
+    assert session.project_path == "/tmp/proj"
+    assert session.title == "Fix parser"
+    humans = [m for m in session.messages if m.kind == Kind.HUMAN]
+    assert [m.text for m in humans] == [
+        "please fix the parser",
+        "no still broken, why???",
+    ]
+    # The turn's selected model is recorded on the human message too.
+    assert [m.model for m in humans] == ["claude-sonnet-4.6", "gpt-5.4-mini"]
+    assistants = [m for m in session.messages if m.kind == Kind.ASSISTANT]
+    # `copilot/auto` resolves to the real served model via result.metadata.
+    assert [m.model for m in assistants] == ["claude-sonnet-4.6", "gpt-5.4-mini"]
+    assert all(m.provider == "copilot" for m in assistants)
+    # The legacy .json for the same id is superseded by the .jsonl log.
+    assert all("legacy" not in m.text for m in session.messages)
+
+    legacy = sessions["sess-vscode-2"]
+    assert legacy.messages[0].text == "add a test"
+    assistants = [m for m in legacy.messages if m.kind == Kind.ASSISTANT]
+    # `github.copilot-chat/*` normalises to the `copilot` provider, and an
+    # unresolved auto-selection stays a distinct label.
+    assert [m.model for m in assistants] == ["claude-sonnet-4", "copilot-auto"]
+    assert all(m.provider == "copilot" for m in assistants)
+
+
+def test_vscode_normalize_model():
+    assert _normalize_model("gpt-5.4-mini-2026-03-17") == "gpt-5.4-mini"
+    assert _normalize_model("claude-haiku-4-5-20251001") == "claude-haiku-4-5"
+    assert _normalize_model("gpt-5.3-codex") == "gpt-5.3-codex"

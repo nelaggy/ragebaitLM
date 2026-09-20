@@ -5,14 +5,18 @@ from __future__ import annotations
 from .base import Adapter
 from .claude import ClaudeAdapter
 from .codex import CodexAdapter
+from .cursor import CursorAdapter
 from .opencode import OpenCodeAdapter
 from .pi import PiAdapter
+from .vscode import VSCodeAdapter
 
 ADAPTERS: dict[str, type] = {
     "codex": CodexAdapter,
     "claude": ClaudeAdapter,
     "opencode": OpenCodeAdapter,
     "pi": PiAdapter,
+    "cursor": CursorAdapter,
+    "vscode": VSCodeAdapter,
 }
 
 

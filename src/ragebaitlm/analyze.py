@@ -32,6 +32,12 @@ def load_messages(store: Store) -> pd.DataFrame:
     if df.empty:
         return df
 
+    # A prompt with no preceding assistant has no model to blame; keep the row
+    # in storage but drop it from every report stat.
+    df = df[df["prev_assistant_seq"].notna()]
+    if df.empty:
+        return df
+
     df["model"] = df["prev_model"].fillna(df["current_model_at_turn"]).fillna("unknown")
     df["provider"] = df["prev_provider"].fillna("unknown")
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce")

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Protocol
@@ -74,6 +77,31 @@ def collect_files(root: Path, pattern: str, recursive: bool = True) -> list[Path
     if not root.exists():
         return []
     return sorted(root.rglob(pattern) if recursive else root.glob(pattern))
+
+
+def app_data_dir(name: str) -> Path:
+    """Return the platform-specific per-application data directory."""
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / name
+    if os.name == "nt":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            return Path(appdata) / name
+    return Path.home() / ".config" / name
+
+
+def uri_to_path(uri) -> str | None:
+    """Best-effort conversion of a VS Code file/remote URI to a local path."""
+    if isinstance(uri, dict):
+        return uri.get("fsPath") or uri.get("path")
+    if not isinstance(uri, str) or not uri:
+        return None
+    if uri.startswith("file:"):
+        return urllib.parse.unquote(urllib.parse.urlparse(uri).path) or None
+    if "://" in uri:
+        # vscode-remote://wsl+Ubuntu/home/me/project
+        return urllib.parse.unquote(urllib.parse.urlparse(uri).path) or None
+    return uri
 
 
 PathFilter = Callable[[Path], bool]
