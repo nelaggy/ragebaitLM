@@ -102,11 +102,20 @@ def sync(
     engine: EngineConfig,
     paths: Iterable[Path] | None = None,
     since: int | None = None,
+    progressive: bool = False,
     progress=None,
 ) -> dict:
-    """Ingest all sessions for one adapter, returning aggregate counts."""
+    """Ingest sessions for one adapter, returning aggregate counts.
+
+    With ``progressive`` the floor is advanced to the start of the newest
+    session already stored for this harness, so only new sessions (and any
+    further turns appended to the newest one) are rescored. An explicit
+    ``since`` overrides that floor, allowing older sessions to be rescanned.
+    """
     run_id = store.start_run(adapter.name, str(adapter.default_path), engine.name)
     counts = {"sessions": 0, "messages": 0, "human": 0, "skipped": 0}
+    if progressive and since is None:
+        since = store.newest_session_at(adapter.name)
     try:
         for session in adapter.iter_sessions(paths=paths, since=since):
             data = score_session(session, engine)
@@ -141,12 +150,20 @@ def sync_many(
     adapters: list[Adapter],
     engine: EngineConfig,
     since: int | None = None,
+    progressive: bool = False,
     progress=None,
 ) -> dict:
     total = {"sessions": 0, "messages": 0, "human": 0}
     started = time.time()
     for adapter in adapters:
-        result = sync(store, adapter, engine, since=since, progress=progress)
+        result = sync(
+            store,
+            adapter,
+            engine,
+            since=since,
+            progressive=progressive,
+            progress=progress,
+        )
         for key in total:
             total[key] += result[key]
     total["elapsed_s"] = round(time.time() - started, 2)

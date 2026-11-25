@@ -62,6 +62,11 @@ def sync(
         None, "--path", "-p", help="Override harness path(s). Use once per harness."
     ),
     since: Optional[str] = typer.Option(None, "--since", help="Only sessions after this date"),
+    full: bool = typer.Option(
+        False,
+        "--full",
+        help="Rescore every session instead of only those newer than the last sync",
+    ),
     db: Path = typer.Option(DEFAULT_DB, "--db", help="Output SQLite database"),
     engine: str = typer.Option("hybrid", "--engine", help=f"One of {', '.join(ENGINES)}"),
     cache_text: bool = typer.Option(
@@ -69,7 +74,12 @@ def sync(
     ),
     home: Optional[Path] = typer.Option(None, help="Override home dir for harness discovery"),
 ):
-    """Import session logs, score user messages, and store stats."""
+    """Import session logs, score user messages, and store stats.
+
+    By default this is progressive: each harness is synced from the start of
+    its newest stored session, so already-scored sessions are skipped. Use
+    --full to rescore everything (e.g. after switching --engine).
+    """
     if engine not in ENGINES:
         raise typer.BadParameter(f"--engine must be one of {', '.join(ENGINES)}")
     names = list(ADAPTERS) if "all" in harness else harness
@@ -95,7 +105,14 @@ def sync(
             adapter = get_adapter(name, home)
             override = list(path) if path else None
             console.print(f"[bold]→ {name}[/bold] ({adapter.default_path})")
-            result = run_sync(store, adapter, config, paths=override, since=since_ms)
+            result = run_sync(
+                store,
+                adapter,
+                config,
+                paths=override,
+                since=since_ms,
+                progressive=not full,
+            )
             for key in total:
                 total[key] += result.get(key, 0)
             console.print(

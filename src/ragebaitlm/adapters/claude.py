@@ -127,4 +127,12 @@ class ClaudeAdapter:
             )
             seq += 1
 
+        stamps = [m.ts for m in session.messages if m.ts]
+        if stamps:
+            started = min(stamps)
+            if session.started_at is None:
+                session.started_at = started
+            if since is not None and started < since:
+                return None
+
         return session

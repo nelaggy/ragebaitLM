@@ -29,9 +29,10 @@ pip install -e ".[ml,dev]"  # + test dependencies
 
 ```bash
 # 1. Import + score logs into data/ragebaitlm.db
-ragebaitlm sync                       # all harnesses
+ragebaitlm sync                       # all harnesses, progressive (only new sessions)
 ragebaitlm sync --harness opencode    # one harness
 ragebaitlm sync --since 2026-01-01    # time filter
+ragebaitlm sync --full                # rescore every session (e.g. after switching engine)
 
 # 2. Print summary / model mood
 ragebaitlm analyze
@@ -45,6 +46,16 @@ ragebaitlm list-harnesses
 
 After `pip install`, the `ragebaitlm` console script is available. You can also run
 it as a module without installing the script: `python -m ragebaitlm --help`.
+
+### Progressive sync
+
+`sync` is progressive by default: for each harness it looks up the newest
+session already stored and only ingests sessions at or after it, so older
+sessions are neither re-parsed nor rescored. The newest stored session is
+included on purpose, so additional turns appended to a still-running session are
+picked up. Pass `--full` to ignore the stored watermark and rescore everything —
+for example after changing `--engine`. An explicit `--since` overrides the
+watermark, so you can rescan from an earlier date without a full sync.
 
 ### Sentiment engines
 

@@ -372,6 +372,21 @@ class Store:
                 timeline.append({"ts": row["ts"], "model": row["model"]})
         return markers
 
+    def newest_session_at(self, harness: str) -> int | None:
+        """Start timestamp of the most recently started stored session.
+
+        Used by progressive sync to skip sessions already ingested. Returns
+        ``None`` when nothing has been stored for the harness yet.
+        """
+        row = self.conn.execute(
+            """SELECT MAX(COALESCE(started_at, ended_at)) AS newest
+               FROM harness_session WHERE harness = ?""",
+            (harness,),
+        ).fetchone()
+        if row is None or row["newest"] is None:
+            return None
+        return int(row["newest"])
+
     def session_counts(self) -> dict[str, int]:
         row = self.conn.execute(
             """SELECT COUNT(*) AS total,
